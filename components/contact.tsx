@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Mail, MapPin, Phone, Send } from "lucide-react"
+import { Mail, MapPin, Phone, Send, CheckCircle2, XCircle } from "lucide-react"
+import emailjs from "@emailjs/browser"
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -17,11 +18,41 @@ export function Contact() {
     subject: "",
     message: "",
   })
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle")
+  const [errorMessage, setErrorMessage] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log("Form submitted:", formData)
+    setStatus("sending")
+
+    try {
+      // EmailJS configuration - Sẽ cần setup tại https://www.emailjs.com/
+      await emailjs.send(
+        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID",
+        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID",
+        {
+          from_name: formData.name,
+          from_email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          to_email: "nguyendaobach@gmail.com",
+        },
+        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "YOUR_PUBLIC_KEY"
+      )
+
+      setStatus("success")
+      setFormData({ name: "", email: "", subject: "", message: "" })
+
+      // Reset success message after 5 seconds
+      setTimeout(() => setStatus("idle"), 5000)
+    } catch (error) {
+      console.error("Failed to send email:", error)
+      setStatus("error")
+      setErrorMessage("Failed to send message. Please try emailing directly at nguyendaobach@gmail.com")
+
+      // Reset error message after 5 seconds
+      setTimeout(() => setStatus("idle"), 5000)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -133,10 +164,24 @@ export function Contact() {
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="w-full md:w-auto">
+                <Button type="submit" size="lg" className="w-full md:w-auto" disabled={status === "sending"}>
                   <Send className="mr-2 size-4" />
-                  Send Message
+                  {status === "sending" ? "Sending..." : "Send Message"}
                 </Button>
+
+                {status === "success" && (
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="size-5" />
+                    <p className="text-sm font-medium">Message sent successfully! I'll get back to you soon.</p>
+                  </div>
+                )}
+
+                {status === "error" && (
+                  <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+                    <XCircle className="size-5 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm font-medium">{errorMessage}</p>
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>
